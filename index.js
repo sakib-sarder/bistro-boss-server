@@ -12,6 +12,7 @@ app.use(express.json());
 //JWT Middleware
 const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
+  console.log(authorization, req.headers);
   if (!authorization) {
     return res
       .status(401)
@@ -65,8 +66,18 @@ async function run() {
       res.send(token);
     });
 
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send({ error: true, message: "forbidden" });
+      }
+      next();
+    };
+
     // Users Related APIs
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -113,6 +124,19 @@ async function run() {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
+
+    app.post("/menu", verifyJWT, verifyAdmin, async (req, res) => {
+      const newItem = req.body;
+      const result = await menuCollection.insertOne(newItem);
+      res.send(result);
+    });
+
+    app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await menuCollection.deleteOne(query);
+      res.send(result);
+    })
 
     app.post("/carts", async (req, res) => {
       const cart = req.body;
@@ -170,5 +194,3 @@ app.listen(port, () => {
 *user: userCollection 
 *app.get("/users")
 */
-
-//probirghosh.ph@gmail.com

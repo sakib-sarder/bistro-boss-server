@@ -4,6 +4,8 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const port = process.env.PORT || 5000;
 
 // Middlewares
@@ -136,7 +138,7 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await menuCollection.deleteOne(query);
       res.send(result);
-    })
+    });
 
     app.post("/carts", async (req, res) => {
       const cart = req.body;
@@ -144,6 +146,7 @@ async function run() {
       res.send(result);
     });
 
+    //carts data
     app.get("/carts", verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (!email) {
@@ -165,6 +168,22 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await cartCollection.deleteOne(query);
       res.send(result);
+    });
+
+    //  create payment intent
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { totalPrice } = req.body;
+      console.log(typeof totalPrice);
+      const amount = parseInt(totalPrice * 100);
+      console.log(totalPrice, amount);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
     //Review Related API
